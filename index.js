@@ -67,6 +67,75 @@ client.on("interactionCreate", async (interaction) => {
     try {
 
         // ABRIR APOSTA
+        if (interaction.custoconst {
+    Client,
+    GatewayIntentBits,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    EmbedBuilder
+} = require("discord.js");
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
+});
+
+const OWNER_ID = process.env.OWNER_ID;
+
+let pendingBets = {};
+let queue = {};
+
+let pixPorValor = {
+    "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***63041790",
+    "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA60",
+    "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
+    "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
+    "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
+};
+
+client.once("ready", () => {
+    console.log(`Bot online como ${client.user.tag}`);
+});
+
+client.on("messageCreate", async (message) => {
+    if (message.author.bot) return;
+
+    if (message.content === "!ticket") {
+
+        const embed = new EmbedBuilder()
+            .setTitle("👑 ROYAL BET FF – SISTEMA OFICIAL")
+            .setDescription(`
+🎮 Sistema automatizado de apostas
+⚡ Duelo automático após confirmação
+🔒 Pagamentos verificados manualmente
+🏆 Organização justa e rápida
+
+Clique abaixo para iniciar sua aposta.
+`)
+            .setColor("Purple");
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("abrir_aposta")
+                .setLabel("🎮 Abrir Aposta")
+                .setStyle(ButtonStyle.Primary)
+        );
+
+        await message.channel.send({ embeds: [embed], components: [row] });
+    }
+});
+
+client.on("interactionCreate", async (interaction) => {
+
+    if (!interaction.isButton()) return;
+
+    try {
+
+        // ABRIR APOSTA
         if (interaction.customId === "abrir_aposta") {
 
             const row = new ActionRowBuilder().addComponents(
@@ -206,18 +275,15 @@ Aguardando confirmação do administrador.`,
             queue[key].push(userId);
             delete pendingBets[userId];
 
-            await interaction.update({
-                content: "✅ Pagamento confirmado! Jogador entrou na fila.",
-                components: []
+            // Envia PIX apenas para o ADM
+            await interaction.reply({
+                content: `💰 Valor: R$${bet.valor}\n📱 Dispositivo: ${bet.device}\n⚔️ Modo: ${bet.modo}\n🎮 Estilo: ${bet.estilo}\n\n📲 Pague via PIX:\n\`\`\`\n${pixPorValor[bet.valor]}\n\`\`\``,
+                ephemeral: true
             });
 
+            // Mensagem de fila (visível para todos)
             await interaction.channel.send({
-                content: `🎮 <@${userId}> entrou na fila
-📱 ${bet.device}
-⚔️ ${bet.modo}
-🎮 ${bet.estilo}
-💰 R$${bet.valor}
-⏳ Aguardando adversário...`
+                content: `🎮 <@${userId}> entrou na fila\n📱 ${bet.device}\n⚔️ ${bet.modo}\n🎮 ${bet.estilo}\n💰 R$${bet.valor}\n⏳ Aguardando adversário...`
             });
 
             const needed = parseInt(bet.modo.replace("v", ""));
@@ -226,8 +292,7 @@ Aguardando confirmação do administrador.`,
                 const players = queue[key].splice(0, needed * 2);
 
                 await interaction.channel.send({
-                    content: `🔥 **Duelo Encontrado!**
-${players.map(id => `<@${id}>`).join(" 🆚 ")}`
+                    content: `🔥 **Duelo Encontrado!**\n${players.map(id => `<@${id}>`).join(" 🆚 ")}`
                 });
             }
         }
