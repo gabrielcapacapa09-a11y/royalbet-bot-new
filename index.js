@@ -15,7 +15,7 @@ const client = new Client({
     ]
 });
 
-const OWNER_ID = process.env.OWNER_ID;
+const OWNER_ID ="1459004432044785792"
 
 let pendingBets = {};
 let queue = {};
