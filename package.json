@@ -1,0 +1,10 @@
+
+{
+  "name": "royalbet",
+  "version": "4.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^14.13.0",
+    "dotenv": "^16.0.3"
+  }
+}
