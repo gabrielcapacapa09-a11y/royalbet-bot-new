@@ -1,28 +1,79 @@
-require('dotenv').config();
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
 });
 
 let pendingBets = {};
-let fila = {};
+let queue = {};
 
-client.once('ready', () => {
+let pixPorValor = {
+    "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***63041790",
+    "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA60",
+    "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
+    "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
+    "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
+};
+
+client.once("ready", () => {
     console.log(`Bot online como ${client.user.tag}`);
 });
 
-client.on('interactionCreate', async (interaction) => {
+client.on("messageCreate", async (message) => {
+    if (message.author.bot) return;
+
+    if (message.content === "!ticket") {
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("valor_10")
+                .setLabel("R$10")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("valor_20")
+                .setLabel("R$20")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("valor_30")
+                .setLabel("R$30")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("valor_40")
+                .setLabel("R$40")
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId("valor_50")
+                .setLabel("R$50")
+                .setStyle(ButtonStyle.Success)
+        );
+
+        await message.channel.send({
+            content: "🎮 **PAINEL DE APOSTA**\n\nEscolha o valor da aposta:",
+            components: [row]
+        });
+    }
+});
+
+client.on("interactionCreate", async (interaction) => {
+
     if (!interaction.isButton()) return;
 
     try {
 
-        if (interaction.customId === "criar_aposta") {
+        // Escolheu valor
+        if (interaction.customId.startsWith("valor_")) {
+
+            const valor = interaction.customId.split("_")[1];
+            const pixCode = pixPorValor[valor];
 
             pendingBets[interaction.user.id] = {
                 userId: interaction.user.id,
-                device: "Mobile",
-                value: "10"
+                value: valor,
+                device: "Celular"
             };
 
             const confirmButton = new ButtonBuilder()
@@ -33,11 +84,20 @@ client.on('interactionCreate', async (interaction) => {
             const row = new ActionRowBuilder().addComponents(confirmButton);
 
             await interaction.reply({
-                content: "⏳ Aguardando confirmação do pagamento...",
-                components: [row]
+                content: `💰 Valor: R$${valor}
+
+📲 Pague via PIX:
+\`\`\`
+${pixCode}
+\`\`\`
+
+Depois clique em confirmar.`,
+                components: [row],
+                ephemeral: true
             });
         }
 
+        // Confirmar pagamento (SOMENTE DONO)
         if (interaction.customId.startsWith("confirmar_")) {
 
             if (interaction.user.id !== process.env.OWNER_ID) {
@@ -58,9 +118,9 @@ client.on('interactionCreate', async (interaction) => {
             }
 
             const key = `${betData.value}_${betData.device}`;
-            if (!fila[key]) fila[key] = [];
+            if (!queue[key]) queue[key] = [];
 
-            fila[key].push({
+            queue[key].push({
                 userId: userId,
                 channelId: interaction.channel.id
             });
@@ -75,38 +135,25 @@ client.on('interactionCreate', async (interaction) => {
             await interaction.channel.send({
                 content: `🎮 <@${userId}> entrou na fila
 💰 Valor: ${betData.value}
-📱 Dispositivo: ${betData.device}
 ⏳ Aguardando adversário...`
             });
 
-            if (fila[key].length >= 2) {
+            if (queue[key].length >= 2) {
 
-                const player1 = fila[key].shift();
-                const player2 = fila[key].shift();
+                const player1 = queue[key].shift();
+                const player2 = queue[key].shift();
 
-                const channel1 = await client.channels.fetch(player1.channelId);
-                const channel2 = await client.channels.fetch(player2.channelId);
-
-                const dueloMsg = `🔥 **Duelo Encontrado!**
+                const duelMsg = `🔥 **Duelo Encontrado!**
 <@${player1.userId}> 🆚 <@${player2.userId}>`;
 
-                await channel1.send({ content: dueloMsg });
-
-                if (player1.channelId !== player2.channelId) {
-                    await channel2.send({ content: dueloMsg });
-                }
+                await interaction.channel.send({ content: duelMsg });
             }
         }
 
     } catch (error) {
         console.error(error);
-        if (!interaction.replied) {
-            await interaction.reply({
-                content: "Ocorreu um erro.",
-                ephemeral: true
-            });
-        }
     }
 });
 
+client.login(process.env.TOKEN);
 client.login(process.env.TOKEN);
