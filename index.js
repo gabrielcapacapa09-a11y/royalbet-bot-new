@@ -21,11 +21,11 @@ const client = new Client({
 const LOGO_URL = "https://image2url.com/r2/default/images/1771860578126-909d839f-5887-44ea-a5ec-eac8c2533f57.png";
 
 const pixPorValor = {
-  "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***63041790",
-  "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA60",
-  "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
-  "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
-  "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
+  "10": "SUA_CHAVE_PIX_10",
+  "20": "SUA_CHAVE_PIX_20",
+  "30": "SUA_CHAVE_PIX_30",
+  "40": "SUA_CHAVE_PIX_40",
+  "50": "SUA_CHAVE_PIX_50"
 };
 
 const pendingBets = {};
@@ -116,23 +116,15 @@ client.on("interactionCreate", async (interaction) => {
   // FECHAR TICKET
   if (interaction.customId === "fechar_ticket") {
 
-    const dono = process.env.OWNER_ID;
-    const criador = interaction.channel.name.replace("aposta-", "");
-
-    if (
-      interaction.user.id !== dono &&
-      interaction.user.username !== criador
-    ) {
+    if (interaction.user.id !== process.env.OWNER_ID &&
+        !interaction.channel.name.includes(interaction.user.username)) {
       return interaction.reply({
-        content: "Você não pode fechar este ticket.",
+        content: "❌ Você não pode fechar este ticket.",
         ephemeral: true
       });
     }
 
-    await interaction.reply({
-      content: "Fechando ticket...",
-      ephemeral: true
-    });
+    await interaction.reply({ content: "Fechando ticket...", ephemeral: true });
 
     setTimeout(() => {
       interaction.channel.delete().catch(() => {});
@@ -143,7 +135,10 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.customId === "device") {
     await interaction.deferUpdate();
 
-    pendingBets[interaction.user.id] = { device: interaction.values[0] };
+    pendingBets[interaction.channel.id] = {
+      userId: interaction.user.id,
+      device: interaction.values[0]
+    };
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -164,7 +159,7 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.customId === "modo") {
     await interaction.deferUpdate();
 
-    pendingBets[interaction.user.id].modo = interaction.values[0];
+    pendingBets[interaction.channel.id].modo = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -183,7 +178,7 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.customId === "estilo") {
     await interaction.deferUpdate();
 
-    pendingBets[interaction.user.id].estilo = interaction.values[0];
+    pendingBets[interaction.channel.id].estilo = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -201,40 +196,50 @@ client.on("interactionCreate", async (interaction) => {
     interaction.channel.send({ content: "Escolha o valor:", components: [menu] });
   }
 
-  // VALOR
+  // VALOR (AGORA MOSTRA PIX PRIMEIRO)
   if (interaction.customId === "valor") {
     await interaction.deferUpdate();
 
-    pendingBets[interaction.user.id].valor = interaction.values[0];
+    const valorEscolhido = interaction.values[0];
+    pendingBets[interaction.channel.id].valor = valorEscolhido;
+
+    const pix = pixPorValor[valorEscolhido];
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("confirmar")
-        .setLabel("Confirmar Pagamento")
+        .setCustomId("confirmar_pagamento")
+        .setLabel("✅ Confirmar Pagamento")
         .setStyle(ButtonStyle.Success)
     );
 
     interaction.channel.send({
-      content: `Valor selecionado: R$${interaction.values[0]}\nAguardando confirmação do dono.`,
+      content:
+        `💰 Valor selecionado: R$${valorEscolhido}\n\n` +
+        `📲 Faça o pagamento via PIX:\n` +
+        `\`\`\`\n${pix}\n\`\`\`\n\n` +
+        `Após o pagamento, aguarde confirmação do dono.`,
       components: [row]
     });
   }
 
-  // CONFIRMAR
-  if (interaction.customId === "confirmar") {
+  // CONFIRMAR PAGAMENTO (SÓ DONO)
+  if (interaction.customId === "confirmar_pagamento") {
 
-    if (interaction.user.id !== process.env.OWNER_ID)
-      return interaction.reply({ content: "Apenas o dono pode confirmar.", ephemeral: true });
+    if (interaction.user.id !== process.env.OWNER_ID) {
+      return interaction.reply({
+        content: "❌ Apenas o dono pode confirmar.",
+        ephemeral: true
+      });
+    }
 
-    const bet = pendingBets[interaction.user.id];
+    const bet = pendingBets[interaction.channel.id];
     if (!bet) return;
 
-    interaction.reply({
-      content: `PIX:\n\`\`\`${pixPorValor[bet.valor]}\`\`\``,
-      ephemeral: true
-    });
+    await interaction.channel.send(
+      `✅ Pagamento confirmado!\n<@${bet.userId}> sua aposta foi registrada.`
+    );
 
-    delete pendingBets[interaction.user.id];
+    delete pendingBets[interaction.channel.id];
   }
 });
 
