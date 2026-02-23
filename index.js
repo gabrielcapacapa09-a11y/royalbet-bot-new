@@ -102,11 +102,28 @@ client.on("interactionCreate", async (interaction) => {
             });
         }
 
-        // ESCOLHA MODO
+        // ESCOLHA 1v1 2v2 3v3 4v4
         if (interaction.customId.startsWith("modo_")) {
 
             const modo = interaction.customId.split("_")[1];
             pendingBets[interaction.user.id].modo = modo;
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId("tipo_Normal").setLabel("⚔️ Normal").setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId("tipo_Tatico").setLabel("🧠 Tático").setStyle(ButtonStyle.Secondary)
+            );
+
+            return interaction.update({
+                content: "🎮 Escolha o estilo da partida:",
+                components: [row]
+            });
+        }
+
+        // ESCOLHA NORMAL OU TÁTICO
+        if (interaction.customId.startsWith("tipo_")) {
+
+            const estilo = interaction.customId.split("_")[1];
+            pendingBets[interaction.user.id].estilo = estilo;
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId("valor_10").setLabel("R$10").setStyle(ButtonStyle.Primary),
@@ -146,6 +163,7 @@ client.on("interactionCreate", async (interaction) => {
                 content: `💰 Valor: R$${valor}
 📱 Dispositivo: ${bet.device}
 ⚔️ Modo: ${bet.modo}
+🎮 Estilo: ${bet.estilo}
 
 📲 Pague via PIX:
 \`\`\`
@@ -182,7 +200,7 @@ Aguardando confirmação do administrador.`,
             const bet = pendingBets[userId];
             if (!bet) return;
 
-            const key = `${bet.device}_${bet.modo}_${bet.valor}`;
+            const key = `${bet.device}_${bet.modo}_${bet.estilo}_${bet.valor}`;
             if (!queue[key]) queue[key] = [];
 
             queue[key].push(userId);
@@ -197,6 +215,7 @@ Aguardando confirmação do administrador.`,
                 content: `🎮 <@${userId}> entrou na fila
 📱 ${bet.device}
 ⚔️ ${bet.modo}
+🎮 ${bet.estilo}
 💰 R$${bet.valor}
 ⏳ Aguardando adversário...`
             });
@@ -207,7 +226,7 @@ Aguardando confirmação do administrador.`,
                 const players = queue[key].splice(0, needed * 2);
 
                 await interaction.channel.send({
-                    content: `🔥 **DUelo Encontrado!**
+                    content: `🔥 **Duelo Encontrado!**
 ${players.map(id => `<@${id}>`).join(" 🆚 ")}`
                 });
             }
