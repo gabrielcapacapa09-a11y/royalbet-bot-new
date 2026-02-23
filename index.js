@@ -21,11 +21,11 @@ const client = new Client({
 const LOGO_URL = "https://image2url.com/r2/default/images/1771860578126-909d839f-5887-44ea-a5ec-eac8c2533f57.png";
 
 const pixPorValor = {
-  "10": "SUA_CHAVE_PIX_10",
-  "20": "SUA_CHAVE_PIX_20",
-  "30": "SUA_CHAVE_PIX_30",
-  "40": "SUA_CHAVE_PIX_40",
-  "50": "SUA_CHAVE_PIX_50"
+  "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***63041790",
+  "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA60",
+  "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
+  "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
+  "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
 };
 
 const pendingBets = {};
@@ -116,8 +116,10 @@ client.on("interactionCreate", async (interaction) => {
   // FECHAR TICKET
   if (interaction.customId === "fechar_ticket") {
 
-    if (interaction.user.id !== process.env.OWNER_ID &&
-        !interaction.channel.name.includes(interaction.user.username)) {
+    if (
+      interaction.user.id !== process.env.OWNER_ID &&
+      !interaction.channel.name.includes(interaction.user.username)
+    ) {
       return interaction.reply({
         content: "❌ Você não pode fechar este ticket.",
         ephemeral: true
@@ -158,7 +160,6 @@ client.on("interactionCreate", async (interaction) => {
   // MODO
   if (interaction.customId === "modo") {
     await interaction.deferUpdate();
-
     pendingBets[interaction.channel.id].modo = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
@@ -177,7 +178,6 @@ client.on("interactionCreate", async (interaction) => {
   // ESTILO
   if (interaction.customId === "estilo") {
     await interaction.deferUpdate();
-
     pendingBets[interaction.channel.id].estilo = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
@@ -196,7 +196,7 @@ client.on("interactionCreate", async (interaction) => {
     interaction.channel.send({ content: "Escolha o valor:", components: [menu] });
   }
 
-  // VALOR (AGORA MOSTRA PIX PRIMEIRO)
+  // VALOR → MOSTRA PIX
   if (interaction.customId === "valor") {
     await interaction.deferUpdate();
 
