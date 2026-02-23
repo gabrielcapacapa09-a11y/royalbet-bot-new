@@ -1,250 +1,204 @@
 const {
-    Client,
-    GatewayIntentBits,
-    ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-    EmbedBuilder
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  PermissionsBitField
 } = require("discord.js");
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
-const OWNER_ID ="1459004432044785792"
-
-let pendingBets = {};
-let queue = {};
-
-let pixPorValor = {
-    "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***63041790",
-    "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA60",
-    "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
-    "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
-    "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
-};
 
 client.once("ready", () => {
-    console.log(`Bot online como ${client.user.tag}`);
+  console.log(`Bot online como ${client.user.tag}`);
 });
 
 client.on("messageCreate", async (message) => {
-    if (message.author.bot) return;
+  if (message.content === "!ticket") {
 
-    if (message.content === "!ticket") {
+    const embed = new EmbedBuilder()
+      .setTitle("👑 ROYAL BET FF – SISTEMA OFICIAL")
+      .setDescription(
+        "🔥 Sistema Oficial de Apostas\n\n" +
+        "• 1v1 • 2v2 • 3v3 • 4v4\n" +
+        "• Normal ou Tático\n" +
+        "• Mobile / PC / Emulador\n\n" +
+        "Clique abaixo para abrir sua aposta."
+      )
+      .setColor("#ff0000")
+      .setThumbnail("https://image2url.com/r2/default/images/1771860578126-909d839f-5887-44ea-a5ec-eac8c2533f57.png")
+      .setFooter({ text: "RoyalBet © Sistema Oficial" });
 
-        const embed = new EmbedBuilder()
-            .setTitle("👑 ROYAL BET FF – SISTEMA OFICIAL")
-            .setDescription(`
-🎮 Sistema automatizado de apostas
-⚡ Duelo automático após confirmação
-🔒 Pagamentos verificados manualmente
-🏆 Organização justa e rápida
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("abrir_aposta")
+        .setLabel("🔥 Abrir Aposta")
+        .setStyle(ButtonStyle.Danger)
+    );
 
-Clique abaixo para iniciar sua aposta.
-`)
-            .setColor("Purple");
-
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("abrir_aposta")
-                .setLabel("🎮 Abrir Aposta")
-                .setStyle(ButtonStyle.Primary)
-        );
-
-        await message.channel.send({ embeds: [embed], components: [row] });
-    }
+    message.channel.send({ embeds: [embed], components: [row] });
+  }
 });
 
 client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
-    if (!interaction.isButton()) return;
+  if (interaction.customId === "abrir_aposta") {
 
-    try {
-
-        // ABRIR APOSTA
-        if (interaction.customId === "abrir_aposta") {
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("device_Mobile").setLabel("📱 Mobile").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("device_PC").setLabel("🖥️ PC").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("device_Emulador").setLabel("💻 Emulador").setStyle(ButtonStyle.Secondary)
-            );
-
-            return interaction.reply({
-                content: "📱 Escolha o dispositivo:",
-                components: [row],
-                ephemeral: true
-            });
+    const channel = await interaction.guild.channels.create({
+      name: `aposta-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      permissionOverwrites: [
+        {
+          id: interaction.guild.id,
+          deny: [PermissionsBitField.Flags.ViewChannel]
+        },
+        {
+          id: interaction.user.id,
+          allow: [PermissionsBitField.Flags.ViewChannel]
+        },
+        {
+          id: process.env.OWNER_ID,
+          allow: [PermissionsBitField.Flags.ViewChannel]
         }
+      ]
+    });
 
-        // ESCOLHA DISPOSITIVO
-        if (interaction.customId.startsWith("device_")) {
+    await interaction.reply({
+      content: `Ticket criado: ${channel}`,
+      ephemeral: true
+    });
 
-            const device = interaction.customId.split("_")[1];
+    const embed = new EmbedBuilder()
+      .setTitle("Escolha seu dispositivo")
+      .setColor("#ff0000")
+      .setThumbnail("https://image2url.com/r2/default/images/1771860578126-909d839f-5887-44ea-a5ec-eac8c2533f57.png");
 
-            pendingBets[interaction.user.id] = { device };
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("device")
+        .setPlaceholder("Selecione o dispositivo")
+        .addOptions([
+          { label: "Mobile", value: "Mobile" },
+          { label: "PC", value: "PC" },
+          { label: "Emulador", value: "Emulador" }
+        ])
+    );
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("modo_1v1").setLabel("1v1").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("modo_2v2").setLabel("2v2").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("modo_3v3").setLabel("3v3").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("modo_4v4").setLabel("4v4").setStyle(ButtonStyle.Success)
-            );
+    channel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [menu] });
+  }
 
-            return interaction.update({
-                content: "⚔️ Escolha o modo da aposta:",
-                components: [row]
-            });
-        }
+  if (interaction.customId === "device") {
+    pendingBets[interaction.user.id] = { device: interaction.values[0] };
 
-        // MODO
-        if (interaction.customId.startsWith("modo_")) {
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("modo")
+        .setPlaceholder("Escolha o modo")
+        .addOptions([
+          { label: "1v1", value: "1v1" },
+          { label: "2v2", value: "2v2" },
+          { label: "3v3", value: "3v3" },
+          { label: "4v4", value: "4v4" }
+        ])
+    );
 
-            const modo = interaction.customId.split("_")[1];
-            pendingBets[interaction.user.id].modo = modo;
+    await interaction.update({ content: "Escolha o modo:", components: [menu] });
+  }
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("tipo_Normal").setLabel("⚔️ Normal").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("tipo_Tatico").setLabel("🧠 Tático").setStyle(ButtonStyle.Secondary)
-            );
+  if (interaction.customId === "modo") {
+    pendingBets[interaction.user.id].modo = interaction.values[0];
 
-            return interaction.update({
-                content: "🎮 Escolha o estilo da partida:",
-                components: [row]
-            });
-        }
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("estilo")
+        .setPlaceholder("Normal ou Tático?")
+        .addOptions([
+          { label: "Normal", value: "Normal" },
+          { label: "Tático", value: "Tatico" }
+        ])
+    );
 
-        // ESTILO
-        if (interaction.customId.startsWith("tipo_")) {
+    await interaction.update({ content: "Escolha o estilo:", components: [menu] });
+  }
 
-            const estilo = interaction.customId.split("_")[1];
-            pendingBets[interaction.user.id].estilo = estilo;
+  if (interaction.customId === "estilo") {
+    pendingBets[interaction.user.id].estilo = interaction.values[0];
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("valor_10").setLabel("R$10").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("valor_20").setLabel("R$20").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("valor_30").setLabel("R$30").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("valor_40").setLabel("R$40").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("valor_50").setLabel("R$50").setStyle(ButtonStyle.Success)
-            );
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("valor")
+        .setPlaceholder("Escolha o valor")
+        .addOptions([
+          { label: "R$10", value: "10" },
+          { label: "R$20", value: "20" },
+          { label: "R$30", value: "30" },
+          { label: "R$40", value: "40" },
+          { label: "R$50", value: "50" }
+        ])
+    );
 
-            return interaction.update({
-                content: "💰 Escolha o valor:",
-                components: [row]
-            });
-        }
+    await interaction.update({ content: "Escolha o valor:", components: [menu] });
+  }
 
-        // VALOR
-        if (interaction.customId.startsWith("valor_")) {
+  if (interaction.customId === "valor") {
+    pendingBets[interaction.user.id].valor = interaction.values[0];
 
-            const valor = interaction.customId.split("_")[1];
-            const bet = pendingBets[interaction.user.id];
-            bet.valor = valor;
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("confirmar")
+        .setLabel("Confirmar Pagamento")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("cancelar")
+        .setLabel("Cancelar")
+        .setStyle(ButtonStyle.Danger)
+    );
 
-            const pix = pixPorValor[valor];
+    await interaction.update({
+      content: `Valor selecionado: R$${interaction.values[0]}\nAguardando confirmação do dono.`,
+      components: [row]
+    });
+  }
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`confirmar_${interaction.user.id}`)
-                    .setLabel("✅ Confirmar")
-                    .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                    .setCustomId(`recusar_${interaction.user.id}`)
-                    .setLabel("❌ Recusar")
-                    .setStyle(ButtonStyle.Danger)
-            );
+  if (interaction.customId === "confirmar") {
 
-            return interaction.update({
-                content: `💰 Valor: R$${valor}
-📱 Dispositivo: ${bet.device}
-⚔️ Modo: ${bet.modo}
-🎮 Estilo: ${bet.estilo}
+    if (interaction.user.id !== process.env.OWNER_ID)
+      return interaction.reply({ content: "Apenas o dono pode confirmar.", ephemeral: true });
 
-📲 Pague via PIX:
-\`\`\`
-${pix}
-\`\`\`
+    const userId = Object.keys(pendingBets)[0];
+    const bet = pendingBets[userId];
+    if (!bet) return;
 
-Aguardando confirmação do administrador.`,
-                components: [row]
-            });
-        }
+    const key = `${bet.device}_${bet.modo}_${bet.estilo}_${bet.valor}`;
+    if (!queue[key]) queue[key] = [];
 
-        // RECUSAR
-        if (interaction.customId.startsWith("recusar_")) {
+    queue[key].push(userId);
 
-            if (interaction.user.id !== OWNER_ID)
-                return interaction.reply({ content: "Apenas o administrador pode fazer isso.", ephemeral: true });
+    await interaction.reply({
+      content: `PIX:\n\`\`\`${pixPorValor[bet.valor]}\`\`\``,
+      ephemeral: true
+    });
 
-            const userId = interaction.customId.split("_")[1];
-            delete pendingBets[userId];
+    interaction.channel.send("Pagamento confirmado. Jogador entrou na fila.");
 
-            return interaction.update({
-                content: "❌ Pagamento recusado. Processo cancelado.",
-                components: []
-            });
-        }
+    delete pendingBets[userId];
+  }
 
-        // CONFIRMAR (SÓ O DONO VÊ O PIX)
-        if (interaction.customId.startsWith("confirmar_")) {
-
-            if (interaction.user.id !== OWNER_ID)
-                return interaction.reply({ content: "Apenas o administrador pode confirmar.", ephemeral: true });
-
-            const userId = interaction.customId.split("_")[1];
-            const bet = pendingBets[userId];
-            if (!bet) return;
-
-            const key = `${bet.device}_${bet.modo}_${bet.estilo}_${bet.valor}`;
-            if (!queue[key]) queue[key] = [];
-
-            queue[key].push(userId);
-            delete pendingBets[userId];
-
-            // 👇 IMPORTANTE: Usando deferReply para ADM
-            await interaction.deferReply({ ephemeral: true });
-
-            await interaction.editReply({
-                content: `💰 Valor: R$${bet.valor}
-📱 Dispositivo: ${bet.device}
-⚔️ Modo: ${bet.modo}
-🎮 Estilo: ${bet.estilo}
-
-📲 PIX DO CLIENTE:
-\`\`\`
-${pixPorValor[bet.valor]}
-\`\`\``
-            });
-
-            await interaction.channel.send({
-                content: `🎮 <@${userId}> entrou na fila
-📱 ${bet.device}
-⚔️ ${bet.modo}
-🎮 ${bet.estilo}
-💰 R$${bet.valor}
-⏳ Aguardando adversário...`
-            });
-
-            const needed = parseInt(bet.modo.replace("v", ""));
-            if (queue[key].length >= needed * 2) {
-
-                const players = queue[key].splice(0, needed * 2);
-
-                await interaction.channel.send({
-                    content: `🔥 **Duelo Encontrado!**
-${players.map(id => `<@${id}>`).join(" 🆚 ")}`
-                });
-            }
-        }
-
-    } catch (err) {
-        console.error(err);
-    }
+  if (interaction.customId === "cancelar") {
+    delete pendingBets[interaction.user.id];
+    interaction.channel.delete();
+  }
 });
 
-client.login(process.env.TOKEN);
+client.login(TOKEN);
