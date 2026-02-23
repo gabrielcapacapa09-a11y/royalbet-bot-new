@@ -90,6 +90,29 @@ let pendingBets = {};
 let queue = {};
 
 let pixPorValor = {
+    "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206const {
+    Client,
+    GatewayIntentBits,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    EmbedBuilder
+} = require("discord.js");
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
+});
+
+const OWNER_ID = process.env.OWNER_ID;
+
+let pendingBets = {};
+let queue = {};
+
+let pixPorValor = {
     "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***63041790",
     "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA60",
     "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
@@ -151,11 +174,10 @@ client.on("interactionCreate", async (interaction) => {
             });
         }
 
-        // ESCOLHA DISPOSITIVO
+        // DISPOSITIVO
         if (interaction.customId.startsWith("device_")) {
 
             const device = interaction.customId.split("_")[1];
-
             pendingBets[interaction.user.id] = { device };
 
             const row = new ActionRowBuilder().addComponents(
@@ -171,7 +193,7 @@ client.on("interactionCreate", async (interaction) => {
             });
         }
 
-        // ESCOLHA 1v1 2v2 3v3 4v4
+        // MODO
         if (interaction.customId.startsWith("modo_")) {
 
             const modo = interaction.customId.split("_")[1];
@@ -188,7 +210,7 @@ client.on("interactionCreate", async (interaction) => {
             });
         }
 
-        // ESCOLHA NORMAL OU TÁTICO
+        // ESTILO
         if (interaction.customId.startsWith("tipo_")) {
 
             const estilo = interaction.customId.split("_")[1];
@@ -208,7 +230,7 @@ client.on("interactionCreate", async (interaction) => {
             });
         }
 
-        // ESCOLHA VALOR
+        // VALOR
         if (interaction.customId.startsWith("valor_")) {
 
             const valor = interaction.customId.split("_")[1];
@@ -244,22 +266,7 @@ Aguardando confirmação do administrador.`,
             });
         }
 
-        // RECUSAR
-        if (interaction.customId.startsWith("recusar_")) {
-
-            if (interaction.user.id !== OWNER_ID)
-                return interaction.reply({ content: "Apenas o administrador pode fazer isso.", ephemeral: true });
-
-            const userId = interaction.customId.split("_")[1];
-            delete pendingBets[userId];
-
-            return interaction.update({
-                content: "❌ Pagamento recusado. Processo cancelado.",
-                components: []
-            });
-        }
-
-        // CONFIRMAR
+        // CONFIRMAR (SÓ O DONO VÊ O PIX)
         if (interaction.customId.startsWith("confirmar_")) {
 
             if (interaction.user.id !== OWNER_ID)
@@ -275,15 +282,27 @@ Aguardando confirmação do administrador.`,
             queue[key].push(userId);
             delete pendingBets[userId];
 
-            // Envia PIX apenas para o ADM
-            await interaction.reply({
-                content: `💰 Valor: R$${bet.valor}\n📱 Dispositivo: ${bet.device}\n⚔️ Modo: ${bet.modo}\n🎮 Estilo: ${bet.estilo}\n\n📲 Pague via PIX:\n\`\`\`\n${pixPorValor[bet.valor]}\n\`\`\``,
-                ephemeral: true
+            await interaction.deferReply({ ephemeral: true });
+
+            await interaction.editReply({
+                content: `💰 Valor: R$${bet.valor}
+📱 Dispositivo: ${bet.device}
+⚔️ Modo: ${bet.modo}
+🎮 Estilo: ${bet.estilo}
+
+📲 PIX DO CLIENTE:
+\`\`\`
+${pixPorValor[bet.valor]}
+\`\`\``
             });
 
-            // Mensagem de fila (visível para todos)
             await interaction.channel.send({
-                content: `🎮 <@${userId}> entrou na fila\n📱 ${bet.device}\n⚔️ ${bet.modo}\n🎮 ${bet.estilo}\n💰 R$${bet.valor}\n⏳ Aguardando adversário...`
+                content: `🎮 <@${userId}> entrou na fila
+📱 ${bet.device}
+⚔️ ${bet.modo}
+🎮 ${bet.estilo}
+💰 R$${bet.valor}
+⏳ Aguardando adversário...`
             });
 
             const needed = parseInt(bet.modo.replace("v", ""));
@@ -292,7 +311,8 @@ Aguardando confirmação do administrador.`,
                 const players = queue[key].splice(0, needed * 2);
 
                 await interaction.channel.send({
-                    content: `🔥 **Duelo Encontrado!**\n${players.map(id => `<@${id}>`).join(" 🆚 ")}`
+                    content: `🔥 **Duelo Encontrado!**
+${players.map(id => `<@${id}>`).join(" 🆚 ")}`
                 });
             }
         }
