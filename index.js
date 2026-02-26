@@ -26,8 +26,8 @@ const LOGO_URL = "https://image2url.com/r2/default/images/1771860578126-909d839f
 let painelChannelId = null;
 
 const pixPorValor = {
-  "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***63041790",
-  "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA60",
+  "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304179010",
+  "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA6020",
   "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
   "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
   "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
@@ -35,6 +35,17 @@ const pixPorValor = {
 
 const pendingBets = {};
 const queue = {};
+const ranking = {};
+const matchData = {};
+
+function gerarSala() {
+  const numero = Math.floor(1000 + Math.random() * 9000);
+  const senha = Math.floor(1000 + Math.random() * 9000);
+  return {
+    nome: `ROYAL-${numero}`,
+    senha: `${senha}`
+  };
+}
 
 client.once("ready", () => {
   console.log(`Bot online como ${client.user.tag}`);
@@ -42,14 +53,15 @@ client.once("ready", () => {
 
 
 // =====================
-// COMANDO !ticket
+// COMANDOS
 // =====================
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
+  // CRIAR PAINEL
   if (message.content === "!ticket") {
 
-    painelChannelId = message.channel.id; // salva canal principal
+    painelChannelId = message.channel.id;
 
     const embed = new EmbedBuilder()
       .setTitle("👑 ROYAL BET FF – SISTEMA OFICIAL")
@@ -72,6 +84,30 @@ client.on("messageCreate", async (message) => {
 
     message.channel.send({ embeds: [embed], components: [row] });
   }
+
+  // RANKING
+  if (message.content === "!ranking") {
+
+    if (Object.keys(ranking).length === 0)
+      return message.reply("Nenhum jogador no ranking ainda.");
+
+    const sorted = Object.entries(ranking)
+      .sort((a, b) => b[1].wins - a[1].wins)
+      .slice(0, 10);
+
+    let desc = "";
+
+    sorted.forEach(([id, stats], index) => {
+      desc += `**${index + 1}°** <@${id}> - 🏆 ${stats.wins}W / ❌ ${stats.losses}L\n`;
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle("🏆 RANKING ROYAL BET")
+      .setColor("Blue")
+      .setDescription(desc);
+
+    message.channel.send({ embeds: [embed] });
+  }
 });
 
 
@@ -82,8 +118,18 @@ client.on("interactionCreate", async (interaction) => {
 
   if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
-  // ABRIR TICKET
+  // ABRIR APOSTA
   if (interaction.customId === "abrir_aposta") {
+
+    const existing = interaction.guild.channels.cache.find(
+      c => c.name === `aposta-${interaction.user.username}`
+    );
+
+    if (existing)
+      return interaction.reply({
+        content: "❌ Você já possui um ticket aberto.",
+        ephemeral: true
+      });
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -110,29 +156,10 @@ client.on("interactionCreate", async (interaction) => {
         ])
     );
 
-    const fechar = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("fechar_ticket")
-        .setLabel("❌ Fechar Ticket")
-        .setStyle(ButtonStyle.Secondary)
-    );
-
     channel.send({
       content: `<@${interaction.user.id}> Escolha seu dispositivo:`,
-      components: [menu, fechar]
+      components: [menu]
     });
-  }
-
-  // FECHAR TICKET
-  if (interaction.customId === "fechar_ticket") {
-
-    if (interaction.user.id !== OWNER_ID &&
-        !interaction.channel.name.includes(interaction.user.username)) {
-      return interaction.reply({ content: "❌ Você não pode fechar.", ephemeral: true });
-    }
-
-    await interaction.reply({ content: "Fechando ticket...", ephemeral: true });
-    setTimeout(() => interaction.channel.delete().catch(() => {}), 1500);
   }
 
   // DEVICE
@@ -159,6 +186,8 @@ client.on("interactionCreate", async (interaction) => {
 
   // MODO
   if (interaction.customId === "modo") {
+    if (!pendingBets[interaction.channel.id]) return;
+
     pendingBets[interaction.channel.id].modo = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
@@ -196,6 +225,7 @@ client.on("interactionCreate", async (interaction) => {
 
   // VALOR
   if (interaction.customId === "valor") {
+
     const valor = interaction.values[0];
     pendingBets[interaction.channel.id].valor = valor;
 
@@ -210,9 +240,7 @@ client.on("interactionCreate", async (interaction) => {
 
     interaction.update({
       content:
-        `💰 Valor: R$${valor}\n\n` +
-        `📲 PIX:\n\`\`\`\n${pix}\n\`\`\`\n\n` +
-        `Aguardando confirmação do dono.`,
+        `💰 Valor: R$${valor}\n\n📲 PIX:\n\`\`\`\n${pix}\n\`\`\`\n`,
       components: [confirmar]
     });
   }
@@ -231,20 +259,9 @@ client.on("interactionCreate", async (interaction) => {
 
     const painelChannel = interaction.guild.channels.cache.get(painelChannelId);
 
-    const filaEmbed = new EmbedBuilder()
-      .setTitle("🎯 JOGADOR NA FILA")
-      .setColor("Red")
-      .setThumbnail(LOGO_URL)
-      .setDescription(
-        `👤 <@${bet.userId}>\n` +
-        `📱 ${bet.device}\n` +
-        `🎮 ${bet.modo}\n` +
-        `⚔️ ${bet.estilo}\n` +
-        `💰 R$${bet.valor}\n\n` +
-        `⏳ Aguardando adversário...`
-      );
-
-    const filaMsg = await painelChannel.send({ embeds: [filaEmbed] });
+    const filaMsg = await painelChannel.send({
+      content: `🎯 <@${bet.userId}> entrou na fila (${bet.modo} - R$${bet.valor})`
+    });
 
     queue[key].push({
       userId: bet.userId,
@@ -256,22 +273,55 @@ client.on("interactionCreate", async (interaction) => {
       const p1 = queue[key].shift();
       const p2 = queue[key].shift();
 
-      const m1 = await painelChannel.messages.fetch(p1.messageId);
-      const m2 = await painelChannel.messages.fetch(p2.messageId);
+      await painelChannel.messages.fetch(p1.messageId).then(m => m.delete()).catch(() => {});
+      await painelChannel.messages.fetch(p2.messageId).then(m => m.delete()).catch(() => {});
 
-      await m1.delete().catch(() => {});
-      await m2.delete().catch(() => {});
+      const sala = gerarSala();
 
-      const encerrada = new EmbedBuilder()
-        .setTitle("🔥 APOSTA encontrada")
+      const matchChannel = await interaction.guild.channels.create({
+        name: `x1-${p1.userId}-vs-${p2.userId}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+          { id: p1.userId, allow: [PermissionsBitField.Flags.ViewChannel] },
+          { id: p2.userId, allow: [PermissionsBitField.Flags.ViewChannel] },
+          { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel] }
+        ]
+      });
+
+      matchData[matchChannel.id] = {
+        p1: p1.userId,
+        p2: p2.userId,
+        valor: bet.valor
+      };
+
+      const embed = new EmbedBuilder()
+        .setTitle("🔥 SALA CRIADA - ROYAL BET")
         .setColor("Green")
         .setThumbnail(LOGO_URL)
         .setDescription(
           `<@${p1.userId}> 🆚 <@${p2.userId}>\n\n` +
-          `📩 Aguarde o administrador chamar no privado.`
+          `🏷️ Sala: **${sala.nome}**\n` +
+          `🔐 Senha: **${sala.senha}**\n\n` +
+          `📸 Envie o print da vitória aqui.`
         );
 
-      await painelChannel.send({ embeds: [encerrada] });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("vitoria_p1")
+          .setLabel("Vitória Jogador 1")
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId("vitoria_p2")
+          .setLabel("Vitória Jogador 2")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await matchChannel.send({
+        content: `<@${p1.userId}> <@${p2.userId}>`,
+        embeds: [embed],
+        components: [row]
+      });
     }
 
     delete pendingBets[interaction.channel.id];
@@ -280,6 +330,38 @@ client.on("interactionCreate", async (interaction) => {
       content: "✅ Jogador colocado na fila.",
       ephemeral: true
     });
+  }
+
+  // RESULTADO
+  if (interaction.customId === "vitoria_p1" || interaction.customId === "vitoria_p2") {
+
+    if (interaction.user.id !== OWNER_ID)
+      return interaction.reply({ content: "❌ Apenas admin confirma.", ephemeral: true });
+
+    const match = matchData[interaction.channel.id];
+    if (!match) return;
+
+    const vencedor = interaction.customId === "vitoria_p1" ? match.p1 : match.p2;
+    const perdedor = interaction.customId === "vitoria_p1" ? match.p2 : match.p1;
+
+    if (!ranking[vencedor]) ranking[vencedor] = { wins: 0, losses: 0 };
+    if (!ranking[perdedor]) ranking[perdedor] = { wins: 0, losses: 0 };
+
+    ranking[vencedor].wins++;
+    ranking[perdedor].losses++;
+
+    const embed = new EmbedBuilder()
+      .setTitle("🏆 RESULTADO CONFIRMADO")
+      .setColor("Gold")
+      .setDescription(
+        `🥇 Vencedor: <@${vencedor}>\n` +
+        `🥈 Perdedor: <@${perdedor}>\n\n` +
+        `💰 Valor: R$${match.valor}`
+      );
+
+    await interaction.update({ embeds: [embed], components: [] });
+
+    delete matchData[interaction.channel.id];
   }
 
 });
