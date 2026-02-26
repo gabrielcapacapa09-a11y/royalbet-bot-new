@@ -1,13 +1,13 @@
-const { 
-  Client, 
-  GatewayIntentBits, 
-  EmbedBuilder, 
-  ActionRowBuilder, 
-  StringSelectMenuBuilder, 
-  ButtonBuilder, 
-  ButtonStyle, 
-  ChannelType, 
-  PermissionsBitField 
+const {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  PermissionsBitField
 } = require("discord.js");
 
 const client = new Client({
@@ -18,36 +18,80 @@ const client = new Client({
   ]
 });
 
-const OWNER_ID = process.env.OWNER_ID;
 const TOKEN = process.env.TOKEN;
+const OWNER_ID = process.env.OWNER_ID;
 
 if (!TOKEN) {
-  console.error("❌ TOKEN não definido.");
+  console.log("❌ TOKEN não definido no Railway.");
   process.exit(1);
 }
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1771860578126-909d839f-5887-44ea-a5ec-eac8c2533f57.png";
 
 const pixPorValor = {
-  "10": "SUA_CHAVE_PIX_10",
-  "20": "SUA_CHAVE_PIX_20",
-  "30": "SUA_CHAVE_PIX_30",
-  "40": "SUA_CHAVE_PIX_40",
-  "50": "SUA_CHAVE_PIX_50"
+  "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304179010",
+  "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA6020",
+  "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
+  "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
+  "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
+};
+
+let painelMessage = null;
+
+const filasPainel = {
+  "10": [],
+  "20": [],
+  "30": [],
+  "40": [],
+  "50": []
 };
 
 const pendingBets = {};
-const queue = {};
-const ranking = {};
-const matchData = {};
 
-function rowFechar() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("fechar_ticket")
-      .setLabel("❌ Fechar Ticket")
-      .setStyle(ButtonStyle.Secondary)
-  );
+function gerarPainelEmbed() {
+
+  function bloco(valor) {
+    const fila = filasPainel[valor];
+    const p1 = fila[0] ? `<@${fila[0]}>` : "Vazio";
+    const p2 = fila[1] ? `<@${fila[1]}>` : "Vazio";
+
+    return {
+      titulo: `💵 R$${valor}`,
+      l1: `1️⃣ ${p1}`,
+      l2: `2️⃣ ${p2}`
+    };
+  }
+
+  const b10 = bloco("10");
+  const b20 = bloco("20");
+  const b30 = bloco("30");
+  const b40 = bloco("40");
+  const b50 = bloco("50");
+
+  const grid =
+    "```" +
+    "\n" +
+    `${b10.titulo.padEnd(15)}${b20.titulo.padEnd(15)}${b30.titulo}\n` +
+    `${b10.l1.padEnd(15)}${b20.l1.padEnd(15)}${b30.l1}\n` +
+    `${b10.l2.padEnd(15)}${b20.l2.padEnd(15)}${b30.l2}\n\n` +
+    `${b40.titulo.padEnd(15)}${b50.titulo}\n` +
+    `${b40.l1.padEnd(15)}${b50.l1}\n` +
+    `${b40.l2.padEnd(15)}${b50.l2}` +
+    "\n```";
+
+  return new EmbedBuilder()
+    .setTitle("👑 ROYAL BET FF – SISTEMA OFICIAL")
+    .setColor("Red")
+    .setThumbnail(LOGO_URL)
+    .setDescription(
+      "🔥 Sistema Oficial de Apostas\n\n" +
+      "• 1v1\n" +
+      "• Normal ou Tático\n" +
+      "• Mobile / PC / Emulador\n\n" +
+      "━━━━━━━━━━━━━━━━━━━\n\n" +
+      "💰 FILAS ATIVAS\n\n" +
+      grid
+    );
 }
 
 client.once("clientReady", () => {
@@ -58,17 +102,8 @@ client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (message.content === "!ticket") {
-    const embed = new EmbedBuilder()
-      .setTitle("👑 ROYAL BET FF – SISTEMA OFICIAL")
-      .setColor("Red")
-      .setThumbnail(LOGO_URL)
-      .setDescription(
-        "🔥 Sistema Oficial de Apostas\n\n" +
-        "• 1v1\n" +
-        "• Normal ou Tático\n" +
-        "• Mobile / PC / Emulador\n\n" +
-        "Clique abaixo para abrir sua aposta."
-      );
+
+    const embed = gerarPainelEmbed();
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -77,40 +112,21 @@ client.on("messageCreate", async (message) => {
         .setStyle(ButtonStyle.Danger)
     );
 
-    message.channel.send({ embeds: [embed], components: [row] });
-  }
-
-  if (message.content === "!ranking") {
-    if (Object.keys(ranking).length === 0)
-      return message.reply("Nenhum jogador no ranking ainda.");
-
-    const sorted = Object.entries(ranking)
-      .sort((a, b) => b[1].wins - a[1].wins);
-
-    let desc = "";
-    sorted.forEach(([id, stats], index) => {
-      desc += `**${index + 1}°** <@${id}> - 🏆 ${stats.wins}W / ❌ ${stats.losses}L\n`;
+    painelMessage = await message.channel.send({
+      embeds: [embed],
+      components: [row]
     });
-
-    const embed = new EmbedBuilder()
-      .setTitle("🏆 RANKING ROYAL BET")
-      .setColor("Blue")
-      .setDescription(desc);
-
-    message.channel.send({ embeds: [embed] });
   }
 });
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
-  // =============================
-  // ABRIR TICKET
-  // =============================
   if (interaction.customId === "abrir_aposta") {
+
     await interaction.deferReply({ ephemeral: true });
 
-    const channel = await interaction.guild.channels.create({
+    const canal = await interaction.guild.channels.create({
       name: `aposta-${interaction.user.username}`,
       type: ChannelType.GuildText,
       permissionOverwrites: [
@@ -122,56 +138,7 @@ client.on("interactionCreate", async (interaction) => {
 
     pendingBets[interaction.user.id] = {};
 
-    await interaction.editReply({ content: `✅ Ticket criado: ${channel}` });
-
-    const menu = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId("device")
-        .setPlaceholder("Selecione o dispositivo")
-        .addOptions([
-          { label: "Mobile", value: "Mobile" },
-          { label: "PC", value: "PC" },
-          { label: "Emulador", value: "Emulador" }
-        ])
-    );
-
-    channel.send({
-      content: `<@${interaction.user.id}> Escolha o dispositivo:`,
-      components: [menu, rowFechar()]
-    });
-  }
-
-  if (interaction.customId === "device") {
-    pendingBets[interaction.user.id].device = interaction.values[0];
-
-    const menu = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId("modo")
-        .setPlaceholder("Selecione o modo")
-        .addOptions([{ label: "1v1", value: "1v1" }])
-    );
-
-    interaction.update({ components: [menu, rowFechar()] });
-  }
-
-  if (interaction.customId === "modo") {
-    pendingBets[interaction.user.id].modo = interaction.values[0];
-
-    const menu = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId("estilo")
-        .setPlaceholder("Selecione o estilo")
-        .addOptions([
-          { label: "Normal", value: "Normal" },
-          { label: "Tático", value: "Tático" }
-        ])
-    );
-
-    interaction.update({ components: [menu, rowFechar()] });
-  }
-
-  if (interaction.customId === "estilo") {
-    pendingBets[interaction.user.id].estilo = interaction.values[0];
+    await interaction.editReply({ content: `✅ Ticket criado: ${canal}` });
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -186,47 +153,38 @@ client.on("interactionCreate", async (interaction) => {
         ])
     );
 
-    interaction.update({ components: [menu, rowFechar()] });
+    canal.send({
+      content: `<@${interaction.user.id}> Escolha o valor:`,
+      components: [menu]
+    });
   }
 
-  // =============================
-  // VALOR → MOSTRA PIX + BOTÃO CONFIRMAR
-  // =============================
   if (interaction.customId === "valor") {
+
     const userId = interaction.user.id;
     const valor = interaction.values[0];
 
     pendingBets[userId].valor = valor;
-    const bet = pendingBets[userId];
 
     const embed = new EmbedBuilder()
       .setTitle("💰 Pagamento via PIX")
       .setColor("Gold")
       .setDescription(
-        `🎮 Modo: ${bet.modo}\n` +
-        `📱 Dispositivo: ${bet.device}\n` +
-        `⚔️ Estilo: ${bet.estilo}\n` +
         `💰 Valor: R$${valor}\n\n` +
         `\`\`\`\n${pixPorValor[valor]}\n\`\`\`\n\n` +
         `⚠️ Aguardando confirmação do ADM.`
       );
 
-    const confirmRow = new ActionRowBuilder().addComponents(
+    const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("confirmar_pagamento")
         .setLabel("✅ Confirmar Pagamento")
         .setStyle(ButtonStyle.Success)
     );
 
-    interaction.update({
-      embeds: [embed],
-      components: [confirmRow, rowFechar()]
-    });
+    interaction.update({ embeds: [embed], components: [row] });
   }
 
-  // =============================
-  // CONFIRMAR PAGAMENTO (SÓ ADM)
-  // =============================
   if (interaction.customId === "confirmar_pagamento") {
 
     if (interaction.user.id !== OWNER_ID) {
@@ -237,37 +195,28 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     const userId = Object.keys(pendingBets)[0];
-    const bet = pendingBets[userId];
+    const valor = pendingBets[userId].valor;
 
-    const key = `${bet.device}-${bet.modo}-${bet.estilo}-${bet.valor}`;
-    if (!queue[key]) queue[key] = [];
+    filasPainel[valor].push(userId);
 
-    queue[key].push(userId);
+    await interaction.reply("✅ Pagamento confirmado.");
 
-    await interaction.reply("✅ Pagamento confirmado. Jogador entrou na fila.");
+    await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
 
-    if (queue[key].length >= 2) {
-      const p1 = queue[key].shift();
-      const p2 = queue[key].shift();
+    if (filasPainel[valor].length >= 2) {
 
-      const matchEmbed = new EmbedBuilder()
-        .setTitle("🔥 MATCH ENCONTRADO - ROYAL BET")
-        .setColor("Green")
-        .setDescription(
-          `👤 <@${p1}> 🆚 <@${p2}>\n\n` +
-          `💰 Valor: R$${bet.valor}\n\n` +
-          `⏳ A sala será criada após o ADM ficar online.\n` +
-          `📩 Caso queira agilizar, chame o ADM no privado.`
-        );
+      const p1 = filasPainel[valor].shift();
+      const p2 = filasPainel[valor].shift();
 
-      interaction.channel.send({ embeds: [matchEmbed] });
+      await interaction.channel.send(
+        `🔥 MATCH ENCONTRADO!\n\n` +
+        `👤 <@${p1}> 🆚 <@${p2}>\n` +
+        `💰 Valor: R$${valor}\n\n` +
+        `⏳ A sala será criada após o ADM ficar online ou chamar no privado.`
+      );
 
-      matchData[interaction.channel.id] = { p1, p2 };
+      await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
     }
-  }
-
-  if (interaction.customId === "fechar_ticket") {
-    interaction.channel.delete();
   }
 });
 
