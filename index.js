@@ -22,23 +22,24 @@ const OWNER_ID = process.env.OWNER_ID;
 const TOKEN = process.env.TOKEN;
 
 if (!TOKEN) {
-  console.error("❌ TOKEN não definido no Environment.");
+  console.error("❌ TOKEN não definido.");
   process.exit(1);
 }
 
 const LOGO_URL = "https://image2url.com/r2/default/images/1771860578126-909d839f-5887-44ea-a5ec-eac8c2533f57.png";
 
 const pixPorValor = {
-  "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304179010",
-  "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA6020",
-  "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
-  "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
-  "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
+  "10": "SUA_CHAVE_PIX_10",
+  "20": "SUA_CHAVE_PIX_20",
+  "30": "SUA_CHAVE_PIX_30",
+  "40": "SUA_CHAVE_PIX_40",
+  "50": "SUA_CHAVE_PIX_50"
 };
 
 const pendingBets = {};
 const queue = {};
 const ranking = {};
+const matchData = {};
 
 function rowFechar() {
   return new ActionRowBuilder().addComponents(
@@ -103,6 +104,9 @@ client.on("messageCreate", async (message) => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
 
+  // =============================
+  // ABRIR TICKET
+  // =============================
   if (interaction.customId === "abrir_aposta") {
     await interaction.deferReply({ ephemeral: true });
 
@@ -138,8 +142,7 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   if (interaction.customId === "device") {
-    const userId = interaction.user.id;
-    pendingBets[userId].device = interaction.values[0];
+    pendingBets[interaction.user.id].device = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -148,15 +151,11 @@ client.on("interactionCreate", async (interaction) => {
         .addOptions([{ label: "1v1", value: "1v1" }])
     );
 
-    interaction.update({
-      content: `<@${userId}> Escolha o modo:`,
-      components: [menu, rowFechar()]
-    });
+    interaction.update({ components: [menu, rowFechar()] });
   }
 
   if (interaction.customId === "modo") {
-    const userId = interaction.user.id;
-    pendingBets[userId].modo = interaction.values[0];
+    pendingBets[interaction.user.id].modo = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -168,15 +167,11 @@ client.on("interactionCreate", async (interaction) => {
         ])
     );
 
-    interaction.update({
-      content: `<@${userId}> Escolha o estilo:`,
-      components: [menu, rowFechar()]
-    });
+    interaction.update({ components: [menu, rowFechar()] });
   }
 
   if (interaction.customId === "estilo") {
-    const userId = interaction.user.id;
-    pendingBets[userId].estilo = interaction.values[0];
+    pendingBets[interaction.user.id].estilo = interaction.values[0];
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -191,19 +186,18 @@ client.on("interactionCreate", async (interaction) => {
         ])
     );
 
-    interaction.update({
-      content: `<@${userId}> Escolha o valor:`,
-      components: [menu, rowFechar()]
-    });
+    interaction.update({ components: [menu, rowFechar()] });
   }
 
+  // =============================
+  // VALOR → MOSTRA PIX + BOTÃO CONFIRMAR
+  // =============================
   if (interaction.customId === "valor") {
-    const valor = interaction.values[0];
     const userId = interaction.user.id;
+    const valor = interaction.values[0];
+
     pendingBets[userId].valor = valor;
     const bet = pendingBets[userId];
-
-    const pix = pixPorValor[valor];
 
     const embed = new EmbedBuilder()
       .setTitle("💰 Pagamento via PIX")
@@ -213,16 +207,44 @@ client.on("interactionCreate", async (interaction) => {
         `📱 Dispositivo: ${bet.device}\n` +
         `⚔️ Estilo: ${bet.estilo}\n` +
         `💰 Valor: R$${valor}\n\n` +
-        `\`\`\`\n${pix}\n\`\`\`\n\n` +
-        `Aguardando adversário...`
+        `\`\`\`\n${pixPorValor[valor]}\n\`\`\`\n\n` +
+        `⚠️ Aguardando confirmação do ADM.`
       );
 
-    interaction.update({ embeds: [embed], components: [rowFechar()] });
+    const confirmRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("confirmar_pagamento")
+        .setLabel("✅ Confirmar Pagamento")
+        .setStyle(ButtonStyle.Success)
+    );
 
-    const key = `${bet.device}-${bet.modo}-${bet.estilo}-${valor}`;
+    interaction.update({
+      embeds: [embed],
+      components: [confirmRow, rowFechar()]
+    });
+  }
 
+  // =============================
+  // CONFIRMAR PAGAMENTO (SÓ ADM)
+  // =============================
+  if (interaction.customId === "confirmar_pagamento") {
+
+    if (interaction.user.id !== OWNER_ID) {
+      return interaction.reply({
+        content: "❌ Apenas o ADM pode confirmar.",
+        ephemeral: true
+      });
+    }
+
+    const userId = Object.keys(pendingBets)[0];
+    const bet = pendingBets[userId];
+
+    const key = `${bet.device}-${bet.modo}-${bet.estilo}-${bet.valor}`;
     if (!queue[key]) queue[key] = [];
+
     queue[key].push(userId);
+
+    await interaction.reply("✅ Pagamento confirmado. Jogador entrou na fila.");
 
     if (queue[key].length >= 2) {
       const p1 = queue[key].shift();
@@ -231,18 +253,16 @@ client.on("interactionCreate", async (interaction) => {
       const matchEmbed = new EmbedBuilder()
         .setTitle("🔥 MATCH ENCONTRADO - ROYAL BET")
         .setColor("Green")
-        .setThumbnail(LOGO_URL)
         .setDescription(
           `👤 <@${p1}> 🆚 <@${p2}>\n\n` +
-          `🎮 Modo: ${bet.modo}\n` +
-          `📱 Dispositivo: ${bet.device}\n` +
-          `⚔️ Estilo: ${bet.estilo}\n` +
-          `💰 Valor: R$${valor}\n\n` +
+          `💰 Valor: R$${bet.valor}\n\n` +
           `⏳ A sala será criada após o ADM ficar online.\n` +
           `📩 Caso queira agilizar, chame o ADM no privado.`
         );
 
       interaction.channel.send({ embeds: [matchEmbed] });
+
+      matchData[interaction.channel.id] = { p1, p2 };
     }
   }
 
