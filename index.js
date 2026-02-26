@@ -22,7 +22,7 @@ const TOKEN = process.env.TOKEN;
 const OWNER_ID = process.env.OWNER_ID;
 
 if (!TOKEN || !OWNER_ID) {
-  console.log("❌ Configure TOKEN e OWNER_ID no Railway.");
+  console.log("Configure TOKEN e OWNER_ID no Railway.");
   process.exit(1);
 }
 
@@ -47,20 +47,15 @@ const filasPainel = {
 };
 
 const pendingBets = {};
+const ticketOwners = {};
 
 function gerarPainelEmbed() {
-
   function bloco(valor) {
     const fila = filasPainel[valor];
-
     const p1 = fila[0] ? `<@${fila[0].id}> • ${fila[0].modo}` : "Vazio";
     const p2 = fila[1] ? `<@${fila[1].id}> • ${fila[1].modo}` : "Vazio";
 
-    return (
-      `💵 **R$${valor}**\n` +
-      `1️⃣ ${p1}\n` +
-      `2️⃣ ${p2}`
-    );
+    return `💵 **R$${valor}**\n1️⃣ ${p1}\n2️⃣ ${p2}`;
   }
 
   return new EmbedBuilder()
@@ -69,11 +64,8 @@ function gerarPainelEmbed() {
     .setThumbnail(LOGO_URL)
     .setDescription(
       "🔥 Sistema Oficial de Apostas\n\n" +
-      "• 1v1\n" +
-      "• Normal ou Tático\n" +
-      "• Mobile / PC / Emulador\n\n" +
-      "━━━━━━━━━━━━━━━━━━━\n\n" +
-      "💰 FILAS ATIVAS\n\n" +
+      "• 1v1\n• Normal ou Tático\n• Mobile / PC / Emulador\n\n" +
+      "━━━━━━━━━━━━━━━━━━━\n\n💰 FILAS ATIVAS\n\n" +
       bloco("10") + "\n\n" +
       bloco("20") + "\n\n" +
       bloco("30") + "\n\n" +
@@ -83,7 +75,7 @@ function gerarPainelEmbed() {
 }
 
 client.once("clientReady", () => {
-  console.log(`✅ Bot online como ${client.user.tag}`);
+  console.log(`Bot online como ${client.user.tag}`);
 });
 
 client.on("messageCreate", async (message) => {
@@ -116,7 +108,7 @@ client.on("interactionCreate", async (interaction) => {
     await interaction.deferReply({ ephemeral: true });
 
     const canal = await interaction.guild.channels.create({
-      name: `ticket-${interaction.user.username}`,
+      name: `ticket-${interaction.user.id}`,
       type: ChannelType.GuildText,
       permissionOverwrites: [
         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -126,8 +118,9 @@ client.on("interactionCreate", async (interaction) => {
     });
 
     pendingBets[interaction.user.id] = {};
+    ticketOwners[canal.id] = interaction.user.id;
 
-    await interaction.editReply({ content: `✅ Ticket criado: ${canal}` });
+    await interaction.editReply({ content: `Ticket criado: ${canal}` });
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -150,7 +143,6 @@ client.on("interactionCreate", async (interaction) => {
 
   // ESCOLHER VALOR
   if (interaction.customId === "valor") {
-
     const userId = interaction.user.id;
     const valor = interaction.values[0];
 
@@ -167,14 +159,13 @@ client.on("interactionCreate", async (interaction) => {
     );
 
     await interaction.update({
-      content: `💰 Valor: R$${valor}\n\nEscolha o modo:`,
+      content: `Valor: R$${valor}\nEscolha o modo:`,
       components: [row]
     });
   }
 
   // ESCOLHER MODO
   if (interaction.customId === "modo") {
-
     const userId = interaction.user.id;
     const modo = interaction.values[0];
     const valor = pendingBets[userId].valor;
@@ -182,19 +173,17 @@ client.on("interactionCreate", async (interaction) => {
     pendingBets[userId].modo = modo;
 
     const embed = new EmbedBuilder()
-      .setTitle("💰 Pagamento via PIX")
+      .setTitle("Pagamento via PIX")
       .setColor("Gold")
       .setDescription(
-        `💰 Valor: R$${valor}\n` +
-        `🎮 Modo: ${modo}\n\n` +
-        `\`\`\`\n${pixPorValor[valor]}\n\`\`\`\n\n` +
-        `⚠️ Aguardando confirmação do ADM.`
+        `Valor: R$${valor}\nModo: ${modo}\n\n` +
+        `\`\`\`\n${pixPorValor[valor]}\n\`\`\`\n\nAguardando confirmação do ADM.`
       );
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("confirmar_pagamento")
-        .setLabel("✅ Confirmar Pagamento")
+        .setLabel("Confirmar Pagamento")
         .setStyle(ButtonStyle.Success)
     );
 
@@ -205,41 +194,42 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.customId === "confirmar_pagamento") {
 
     if (interaction.user.id !== OWNER_ID) {
-      return interaction.reply({ content: "❌ Apenas o ADM pode confirmar.", ephemeral: true });
+      return interaction.reply({ content: "Apenas o ADM confirma.", ephemeral: true });
     }
 
-    const userId = Object.keys(pendingBets)[0];
+    const userId = ticketOwners[interaction.channel.id];
+    if (!userId) return;
+
     const valor = pendingBets[userId].valor;
+    const modo = pendingBets[userId].modo;
 
     if (!filasPainel[valor].some(p => p.id === userId)) {
-      filasPainel[valor].push({
-        id: userId,
-        modo: pendingBets[userId].modo
-      });
+      filasPainel[valor].push({ id: userId, modo });
     }
 
     const fecharRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("fechar_ticket")
-        .setLabel("🔒 Fechar Ticket")
+        .setLabel("Fechar Ticket")
         .setStyle(ButtonStyle.Secondary)
     );
 
     await interaction.update({
-      content: "✅ Pagamento confirmado! Você entrou na fila.",
+      content: "Pagamento confirmado! Entrou na fila.",
       embeds: [],
       components: [fecharRow]
     });
 
     await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
 
+    // MATCH
     if (filasPainel[valor].length >= 2) {
 
       const player1 = filasPainel[valor].shift();
       const player2 = filasPainel[valor].shift();
 
       const canalMatch = await interaction.guild.channels.create({
-        name: `partida-${valor}-${player1.modo.toLowerCase()}`,
+        name: `x1-${valor}-${modo.toLowerCase()}`,
         type: ChannelType.GuildText,
         permissionOverwrites: [
           { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -250,25 +240,19 @@ client.on("interactionCreate", async (interaction) => {
       });
 
       await canalMatch.send(
-        `🔥 **MATCH ENCONTRADO!**\n\n` +
-        `👤 <@${player1.id}> 🆚 <@${player2.id}>\n` +
-        `💰 Valor: R$${valor}\n` +
-        `🎮 Modo: ${player1.modo}\n\n` +
-        `⏳ A sala será criada após o ADM ficar online ou chamar no privado.`
+        `🔥 X1 INICIADO!\n\n` +
+        `<@${player1.id}> 🆚 <@${player2.id}>\n` +
+        `Valor: R$${valor}\nModo: ${modo}\n\n` +
+        `A sala será criada pelo ADM.`
       );
 
       await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
     }
   }
 
-  // FECHAR TICKET
   if (interaction.customId === "fechar_ticket") {
-
-    await interaction.reply({ content: "🔒 Ticket será fechado em 3 segundos..." });
-
-    setTimeout(() => {
-      interaction.channel.delete().catch(() => {});
-    }, 3000);
+    await interaction.reply({ content: "Fechando ticket..." });
+    setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
   }
 });
 
