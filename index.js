@@ -122,6 +122,64 @@ client.on("interactionCreate", async (interaction) => {
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
+        .setCustomId("device")
+        .setPlaceholder("Selecione o dispositivo")
+        .addOptions([
+          { label: "Mobile", value: "Mobile" },
+          { label: "PC", value: "PC" },
+          { label: "Emulador", value: "Emulador" }
+        ])
+    );
+
+    channel.send({
+      content: `<@${interaction.user.id}> Escolha o dispositivo:`,
+      components: [menu, rowFechar()]
+    });
+  }
+
+  if (interaction.customId === "device") {
+    const userId = interaction.user.id;
+    pendingBets[userId].device = interaction.values[0];
+
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("modo")
+        .setPlaceholder("Selecione o modo")
+        .addOptions([{ label: "1v1", value: "1v1" }])
+    );
+
+    interaction.update({
+      content: `<@${userId}> Escolha o modo:`,
+      components: [menu, rowFechar()]
+    });
+  }
+
+  if (interaction.customId === "modo") {
+    const userId = interaction.user.id;
+    pendingBets[userId].modo = interaction.values[0];
+
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("estilo")
+        .setPlaceholder("Selecione o estilo")
+        .addOptions([
+          { label: "Normal", value: "Normal" },
+          { label: "Tático", value: "Tático" }
+        ])
+    );
+
+    interaction.update({
+      content: `<@${userId}> Escolha o estilo:`,
+      components: [menu, rowFechar()]
+    });
+  }
+
+  if (interaction.customId === "estilo") {
+    const userId = interaction.user.id;
+    pendingBets[userId].estilo = interaction.values[0];
+
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
         .setCustomId("valor")
         .setPlaceholder("Selecione o valor")
         .addOptions([
@@ -133,8 +191,8 @@ client.on("interactionCreate", async (interaction) => {
         ])
     );
 
-    channel.send({
-      content: `<@${interaction.user.id}> Escolha o valor da aposta:`,
+    interaction.update({
+      content: `<@${userId}> Escolha o valor:`,
       components: [menu, rowFechar()]
     });
   }
@@ -142,8 +200,8 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.customId === "valor") {
     const valor = interaction.values[0];
     const userId = interaction.user.id;
-
     pendingBets[userId].valor = valor;
+    const bet = pendingBets[userId];
 
     const pix = pixPorValor[valor];
 
@@ -151,14 +209,17 @@ client.on("interactionCreate", async (interaction) => {
       .setTitle("💰 Pagamento via PIX")
       .setColor("Gold")
       .setDescription(
-        `Valor: R$${valor}\n\n` +
-        `Chave PIX copia e cola:\n\n\`\`\`\n${pix}\n\`\`\`\n\n` +
-        `Após o pagamento aguarde adversário...`
+        `🎮 Modo: ${bet.modo}\n` +
+        `📱 Dispositivo: ${bet.device}\n` +
+        `⚔️ Estilo: ${bet.estilo}\n` +
+        `💰 Valor: R$${valor}\n\n` +
+        `\`\`\`\n${pix}\n\`\`\`\n\n` +
+        `Aguardando adversário...`
       );
 
     interaction.update({ embeds: [embed], components: [rowFechar()] });
 
-    const key = valor;
+    const key = `${bet.device}-${bet.modo}-${bet.estilo}-${valor}`;
 
     if (!queue[key]) queue[key] = [];
     queue[key].push(userId);
@@ -173,6 +234,9 @@ client.on("interactionCreate", async (interaction) => {
         .setThumbnail(LOGO_URL)
         .setDescription(
           `👤 <@${p1}> 🆚 <@${p2}>\n\n` +
+          `🎮 Modo: ${bet.modo}\n` +
+          `📱 Dispositivo: ${bet.device}\n` +
+          `⚔️ Estilo: ${bet.estilo}\n` +
           `💰 Valor: R$${valor}\n\n` +
           `⏳ A sala será criada após o ADM ficar online.\n` +
           `📩 Caso queira agilizar, chame o ADM no privado.`
