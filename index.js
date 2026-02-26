@@ -241,18 +241,45 @@ client.on("interactionCreate", async (interaction) => {
 
     await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
 
-    if (filasPainel[valor].length >= 2) {
+  if (filasPainel[valor].length >= 2) {
 
-      const player1 = filasPainel[valor].shift();
-      const player2 = filasPainel[valor].shift();
+  const player1 = filasPainel[valor].shift();
+  const player2 = filasPainel[valor].shift();
 
-      await interaction.channel.send(
-        `🔥 MATCH ENCONTRADO!\n\n` +
-        `👤 <@${player1.id}> 🆚 <@${player2.id}>\n` +
-        `💰 Valor: R$${valor}\n` +
-        `🎮 Modo: ${player1.modo}\n\n` +
-        `⏳ A sala será criada após o ADM ficar online ou chamar no privado.`
-      );
+  // Criar canal da partida
+  const canalMatch = await interaction.guild.channels.create({
+    name: `🏆-${valor}-${player1.modo.toLowerCase()}`,
+    type: ChannelType.GuildText,
+    permissionOverwrites: [
+      {
+        id: interaction.guild.id,
+        deny: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+        id: player1.id,
+        allow: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+        id: player2.id,
+        allow: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+        id: OWNER_ID,
+        allow: [PermissionsBitField.Flags.ViewChannel]
+      }
+    ]
+  });
+
+  await canalMatch.send(
+    `🔥 **MATCH ENCONTRADO!**\n\n` +
+    `👤 <@${player1.id}> 🆚 <@${player2.id}>\n` +
+    `💰 Valor: R$${valor}\n` +
+    `🎮 Modo: ${player1.modo}\n\n` +
+    `⏳ A sala será criada após o ADM ficar online ou chamar no privado.`
+  );
+
+  await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
+}
 
       await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
     }
