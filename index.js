@@ -21,8 +21,8 @@ const client = new Client({
 const TOKEN = process.env.TOKEN;
 const OWNER_ID = process.env.OWNER_ID;
 
-if (!TOKEN) {
-  console.log("❌ TOKEN não definido.");
+if (!TOKEN || !OWNER_ID) {
+  console.log("❌ Configure TOKEN e OWNER_ID no Railway.");
   process.exit(1);
 }
 
@@ -53,13 +53,8 @@ function gerarPainelEmbed() {
   function bloco(valor) {
     const fila = filasPainel[valor];
 
-    const p1 = fila[0]
-      ? `<@${fila[0].id}> • ${fila[0].modo}`
-      : "Vazio";
-
-    const p2 = fila[1]
-      ? `<@${fila[1].id}> • ${fila[1].modo}`
-      : "Vazio";
+    const p1 = fila[0] ? `<@${fila[0].id}> • ${fila[0].modo}` : "Vazio";
+    const p2 = fila[1] ? `<@${fila[1].id}> • ${fila[1].modo}` : "Vazio";
 
     return (
       `💵 **R$${valor}**\n` +
@@ -121,7 +116,7 @@ client.on("interactionCreate", async (interaction) => {
     await interaction.deferReply({ ephemeral: true });
 
     const canal = await interaction.guild.channels.create({
-      name: `aposta-${interaction.user.username}`,
+      name: `ticket-${interaction.user.username}`,
       type: ChannelType.GuildText,
       permissionOverwrites: [
         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -166,7 +161,8 @@ client.on("interactionCreate", async (interaction) => {
         .setCustomId("modo")
         .setPlaceholder("Selecione o modo")
         .addOptions([
-          { label: "Modo Normal", value: "Normal" }
+          { label: "Modo Normal", value: "Normal" },
+          { label: "Modo Tático", value: "Tático" }
         ])
     );
 
@@ -202,29 +198,25 @@ client.on("interactionCreate", async (interaction) => {
         .setStyle(ButtonStyle.Success)
     );
 
-    await interaction.update({
-      embeds: [embed],
-      components: [row]
-    });
+    await interaction.update({ embeds: [embed], components: [row] });
   }
 
   // CONFIRMAR PAGAMENTO
   if (interaction.customId === "confirmar_pagamento") {
 
     if (interaction.user.id !== OWNER_ID) {
-      return interaction.reply({
-        content: "❌ Apenas o ADM pode confirmar.",
-        ephemeral: true
-      });
+      return interaction.reply({ content: "❌ Apenas o ADM pode confirmar.", ephemeral: true });
     }
 
     const userId = Object.keys(pendingBets)[0];
     const valor = pendingBets[userId].valor;
 
-    filasPainel[valor].push({
-      id: userId,
-      modo: pendingBets[userId].modo
-    });
+    if (!filasPainel[valor].some(p => p.id === userId)) {
+      filasPainel[valor].push({
+        id: userId,
+        modo: pendingBets[userId].modo
+      });
+    }
 
     const fecharRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -234,52 +226,36 @@ client.on("interactionCreate", async (interaction) => {
     );
 
     await interaction.update({
-      content: "✅ Pagamento confirmado!\nVocê entrou na fila.",
+      content: "✅ Pagamento confirmado! Você entrou na fila.",
       embeds: [],
       components: [fecharRow]
     });
 
     await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
 
-  if (filasPainel[valor].length >= 2) {
+    if (filasPainel[valor].length >= 2) {
 
-  const player1 = filasPainel[valor].shift();
-  const player2 = filasPainel[valor].shift();
+      const player1 = filasPainel[valor].shift();
+      const player2 = filasPainel[valor].shift();
 
-  // Criar canal da partida
-  const canalMatch = await interaction.guild.channels.create({
-    name: `🏆-${valor}-${player1.modo.toLowerCase()}`,
-    type: ChannelType.GuildText,
-    permissionOverwrites: [
-      {
-        id: interaction.guild.id,
-        deny: [PermissionsBitField.Flags.ViewChannel]
-      },
-      {
-        id: player1.id,
-        allow: [PermissionsBitField.Flags.ViewChannel]
-      },
-      {
-        id: player2.id,
-        allow: [PermissionsBitField.Flags.ViewChannel]
-      },
-      {
-        id: OWNER_ID,
-        allow: [PermissionsBitField.Flags.ViewChannel]
-      }
-    ]
-  });
+      const canalMatch = await interaction.guild.channels.create({
+        name: `partida-${valor}-${player1.modo.toLowerCase()}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+          { id: player1.id, allow: [PermissionsBitField.Flags.ViewChannel] },
+          { id: player2.id, allow: [PermissionsBitField.Flags.ViewChannel] },
+          { id: OWNER_ID, allow: [PermissionsBitField.Flags.ViewChannel] }
+        ]
+      });
 
-  await canalMatch.send(
-    `🔥 **MATCH ENCONTRADO!**\n\n` +
-    `👤 <@${player1.id}> 🆚 <@${player2.id}>\n` +
-    `💰 Valor: R$${valor}\n` +
-    `🎮 Modo: ${player1.modo}\n\n` +
-    `⏳ A sala será criada após o ADM ficar online ou chamar no privado.`
-  );
-
-  await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
-}
+      await canalMatch.send(
+        `🔥 **MATCH ENCONTRADO!**\n\n` +
+        `👤 <@${player1.id}> 🆚 <@${player2.id}>\n` +
+        `💰 Valor: R$${valor}\n` +
+        `🎮 Modo: ${player1.modo}\n\n` +
+        `⏳ A sala será criada após o ADM ficar online ou chamar no privado.`
+      );
 
       await painelMessage.edit({ embeds: [gerarPainelEmbed()] });
     }
@@ -288,9 +264,7 @@ client.on("interactionCreate", async (interaction) => {
   // FECHAR TICKET
   if (interaction.customId === "fechar_ticket") {
 
-    await interaction.reply({
-      content: "🔒 Ticket será fechado em 3 segundos..."
-    });
+    await interaction.reply({ content: "🔒 Ticket será fechado em 3 segundos..." });
 
     setTimeout(() => {
       interaction.channel.delete().catch(() => {});
