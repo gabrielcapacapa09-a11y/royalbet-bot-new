@@ -29,11 +29,11 @@ if (!TOKEN) {
 const LOGO_URL = "https://image2url.com/r2/default/images/1771860578126-909d839f-5887-44ea-a5ec-eac8c2533f57.png";
 
 const pixPorValor = {
-  "10": "SEU_PIX_10",
-  "20": "SEU_PIX_20",
-  "30": "SEU_PIX_30",
-  "40": "SEU_PIX_40",
-  "50": "SEU_PIX_50"
+  "10": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540510.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304179010",
+  "20": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540520.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304CA6020",
+  "30": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540530.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304712F",
+  "40": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540540.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***630461A1",
+  "50": "00020101021126580014br.gov.bcb.pix013693f7503d-c176-4c19-a15d-206ded117ec4520400005303986540550.005802BR5918GABRIEL C DA SILVA6008IRANDUBA62070503***6304DAEE"
 };
 
 let painelMessage = null;
@@ -166,8 +166,7 @@ client.on("interactionCreate", async (interaction) => {
         .setCustomId("modo")
         .setPlaceholder("Selecione o modo")
         .addOptions([
-          { label: "Modo Normal", value: "Normal" },
-          { label: "Modo Tático", value: "Tático" }
+          { label: "Modo Normal", value: "Normal" }
         ])
     );
 
